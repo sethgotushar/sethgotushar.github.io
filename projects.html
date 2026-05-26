@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Projects | Tushar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">𝕋</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="projects.html">Projects</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </header>
+
+  <section class="content">
+    <h2>My Projects</h2>
+    <div class="project">
+      <h3>Smart Car Controller</h3>
+      <pre><code class="python">
+# Example Python snippet
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(7, GPIO.OUT)
+GPIO.output(7, True)
+      </code></pre>
+      <p>Handwritten circuit diagram: <a href="images/car_circuit.png">View</a></p>
+    </div>
+
+    <div class="project">
+      <h3>Robotics Arm</h3>
+      <pre><code class="python">
+# Example controller code
+servo_angle = 90
+print("Moving arm to", servo_angle)
+      </code></pre>
+      <p>Handwritten circuit diagram: <a href="images/arm_circuit.png">View</a></p>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2026 Tushar</p>
+  </footer>
+</body>
+</html>
