@@ -47,6 +47,18 @@ function toggleMenu() {
   nav.classList.toggle("hidden");
 }
 </script>
+<script>
+  // Run when user presses Enter in the search box
+  document.querySelector(".search-box").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+      const query = e.target.value.trim();
+      if (query) {
+        // Redirect to Bing search with your site + query
+        window.location.href = "https://www.bing.com/search?q=site:sethgotushar.github.io " + encodeURIComponent(query);
+      }
+    }
+  });
+</script>
 
 </body>
 </html>
