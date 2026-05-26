@@ -119,3 +119,37 @@ nav a:hover {
     flex-direction: column;
   }
 }
+/* Default desktop styles (already in your CSS) */
+
+/* Mobile portrait styles */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+  }
+
+  nav a {
+    margin: 8px 0;
+    font-size: 18px;
+  }
+
+  .logo {
+    margin-bottom: 10px;
+  }
+
+  main {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .card {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
