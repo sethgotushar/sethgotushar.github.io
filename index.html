@@ -8,15 +8,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <header>
-    <div class="logo">𝕋</div>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="projects.html">Projects</a>
-      <a href="about.html">About</a>
-      <a href="contact.html">Contact</a>
-    </nav>
-  </header>
+  <header class="main-header">
+  <!-- Left side: Hamburger menu -->
+  <div class="menu-icon" onclick="toggleMenu()">☰</div>
+
+  <!-- Center: Website name -->
+  <h1 class="site-title">Circuit Forge</h1>
+
+  <!-- Right side: Logo + Search -->
+  <div class="header-right">
+    <div class="logo">T</div>
+    <input type="text" placeholder="Search..." class="search-box">
+  </div>
+</header>
+
+<!-- Hidden nav links (appear when ☰ clicked) -->
+<nav id="nav-links" class="hidden">
+  <a href="index.html">Home</a>
+  <a href="projects.html">Projects</a>
+  <a href="about.html">About</a>
+  <a href="contact.html">Contact</a>
+</nav>
+
 
   <section class="hero">
     <h1>Welcome to Tushar’s Lab</h1>
