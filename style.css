@@ -214,3 +214,132 @@ nav a:hover {
 .hidden {
   display: none;
 }
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #000;
+  color: #00ff99;
+  padding: 10px 20px;
+}
+
+.menu-icon {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.site-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  flex-grow: 1;
+  color: #00ff99;
+  letter-spacing: 0.5px; /* fixes the 's spacing issue */
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 10px;
+  color: #00ff99;
+}
+
+.search-box {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #00ff99;
+  background: #111;
+  color: #fff;
+}
+
+/* Nav links */
+nav {
+  background: #111;
+  text-align: left;
+  padding: 10px;
+}
+
+nav a {
+  display: block;
+  padding: 8px;
+  color: #00ff99;
+  text-decoration: none;
+}
+
+nav a:hover {
+  background: #222;
+}
+
+.hidden {
+  display: none;
+}
+
+/* ✅ Responsive fix for phones */
+@media (max-width: 768px) {
+  .main-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* left, center, right */
+    align-items: center;
+  }
+
+  .menu-icon {
+    grid-column: 1;
+    text-align: left;
+  }
+
+  .site-title {
+    grid-column: 2;
+    text-align: center;
+    font-size: 20px;
+  }
+
+  .header-right {
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .search-box {
+    width: 100px;
+    font-size: 14px;
+  }
+
+  #nav-links {
+    display: none;
+    flex-direction: column;
+    background: #111;
+    padding: 10px;
+  }
+
+  #nav-links.show {
+    display: flex;
+  }
+
+  #nav-links a {
+    padding: 10px;
+    text-align: left;
+  }
+}
+
+/* ✅ Desktop: show nav links always */
+@media (min-width: 769px) {
+  #nav-links {
+    display: flex !important;
+    justify-content: center;
+    background: #000;
+  }
+  #nav-links a {
+    display: inline-block;
+    margin: 0 15px;
+  }
+  .menu-icon {
+    display: none; /* hide hamburger on PC */
+  }
+}
