@@ -40,11 +40,177 @@
     <div class="project">
       <h3>Smart Car Controller</h3>
       <pre><code class="python">
-# Example Python snippet
-import RPi.GPIO as GPIO
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(7, GPIO.OUT)
-GPIO.output(7, True)
+
+import customtkinter as ctk
+import serial
+import serial.tools.list_ports
+
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+class JarvisController:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("JARVIS ROBOT CONTROLLER")
+        self.root.geometry("1100x700")
+
+        self.ser = None
+
+        self.front_on = False
+        self.back_on = False
+        self.park_on = False
+        self.horn_on = False
+
+        self.build_ui()
+        self.bind_keys()
+
+    def build_ui(self):
+        top = ctk.CTkFrame(self.root)
+        top.pack(fill="x", padx=15, pady=15)
+
+        self.port_var = ctk.StringVar()
+
+        self.port_box = ctk.CTkComboBox(top, variable=self.port_var, values=[])
+        self.port_box.pack(side="left", padx=10, pady=10)
+
+        ctk.CTkButton(top, text="Refresh", command=self.refresh_ports).pack(side="left", padx=5)
+        ctk.CTkButton(top, text="Connect", command=self.connect).pack(side="left", padx=5)
+        ctk.CTkButton(top, text="Disconnect", command=self.disconnect).pack(side="left", padx=5)
+
+        self.status = ctk.CTkLabel(top, text="Disconnected")
+        self.status.pack(side="right", padx=10)
+
+        self.refresh_ports()
+
+        middle = ctk.CTkFrame(self.root)
+        middle.pack(fill="both", expand=True, padx=15, pady=15)
+
+        move = ctk.CTkFrame(middle)
+        move.pack(side="left", expand=True, fill="both", padx=10)
+
+        ctk.CTkLabel(move, text="MOVEMENT", font=("Arial", 24, "bold")).pack(pady=10)
+
+        grid1 = ctk.CTkFrame(move)
+        grid1.pack(expand=True)
+
+        ctk.CTkButton(grid1, text="↑", width=100, height=70,
+                      command=lambda: self.send("F")).grid(row=0, column=1, padx=10, pady=10)
+
+        ctk.CTkButton(grid1, text="←", width=100, height=70,
+                      command=lambda: self.send("L")).grid(row=1, column=0, padx=10, pady=10)
+
+        ctk.CTkButton(grid1, text="→", width=100, height=70,
+                      command=lambda: self.send("R")).grid(row=1, column=2, padx=10, pady=10)
+
+        ctk.CTkButton(grid1, text="↓", width=100, height=70,
+                      command=lambda: self.send("B")).grid(row=2, column=1, padx=10, pady=10)
+
+        lights = ctk.CTkFrame(middle)
+        lights.pack(side="right", expand=True, fill="both", padx=10)
+
+        ctk.CTkLabel(lights, text="LIGHTS & HORN", font=("Arial", 24, "bold")).pack(pady=10)
+
+        grid2 = ctk.CTkFrame(lights)
+        grid2.pack(expand=True)
+
+        self.front_btn = ctk.CTkButton(grid2, text="Front (1)", width=120, height=70,
+                                       command=self.toggle_front)
+        self.front_btn.grid(row=0, column=1, padx=10, pady=10)
+
+        self.back_btn = ctk.CTkButton(grid2, text="Back (2)", width=120, height=70,
+                                      command=self.toggle_back)
+        self.back_btn.grid(row=1, column=0, padx=10, pady=10)
+
+        self.horn_btn = ctk.CTkButton(grid2, text="Horn (4)", width=120, height=70,
+                                      command=self.toggle_horn)
+        self.horn_btn.grid(row=1, column=2, padx=10, pady=10)
+
+        self.park_btn = ctk.CTkButton(grid2, text="Parking (3)", width=120, height=70,
+                                      command=self.toggle_park)
+        self.park_btn.grid(row=2, column=1, padx=10, pady=10)
+
+        bottom = ctk.CTkFrame(self.root)
+        bottom.pack(fill="x", padx=15, pady=15)
+
+        self.speed_label = ctk.CTkLabel(bottom, text="Speed Level: 6")
+        self.speed_label.pack(pady=5)
+
+        self.speed = ctk.CTkSlider(bottom, from_=0, to=10, number_of_steps=10,
+                                   command=self.speed_changed)
+        self.speed.set(6)
+        self.speed.pack(fill="x", padx=20, pady=10)
+
+    def refresh_ports(self):
+        ports = [p.device for p in serial.tools.list_ports.comports()]
+        self.port_box.configure(values=ports)
+        if ports:
+            self.port_box.set(ports[0])
+
+    def connect(self):
+        try:
+            self.ser = serial.Serial(self.port_var.get(), 9600, timeout=1)
+            self.status.configure(text="Connected")
+        except Exception as e:
+            self.status.configure(text=str(e))
+
+    def disconnect(self):
+        try:
+            if self.ser:
+                self.ser.close()
+            self.status.configure(text="Disconnected")
+        except:
+            pass
+
+    def send(self, cmd):
+        try:
+            if self.ser and self.ser.is_open:
+                self.ser.write(cmd.encode("ascii"))
+                self.ser.flush()
+                print("Sent:", cmd)
+        except Exception as e:
+            print(e)
+
+    def toggle_front(self):
+        self.front_on = not self.front_on
+        self.send("W" if self.front_on else "w")
+
+    def toggle_back(self):
+        self.back_on = not self.back_on
+        self.send("U" if self.back_on else "u")
+
+    def toggle_park(self):
+        self.park_on = not self.park_on
+        self.send("X" if self.park_on else "x")
+
+    def toggle_horn(self):
+        self.horn_on = not self.horn_on
+        self.send("V" if self.horn_on else "v")
+
+    def speed_changed(self, value):
+        value = round(value)
+        self.speed_label.configure(text=f"Speed Level: {value}")
+        mapping = {0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"q"}
+        self.send(mapping[value])
+
+    def bind_keys(self):
+        self.root.bind("<KeyPress-Up>", lambda e:self.send("F"))
+        self.root.bind("<KeyRelease-Up>", lambda e:self.send("S"))
+        self.root.bind("<KeyPress-Down>", lambda e:self.send("B"))
+        self.root.bind("<KeyRelease-Down>", lambda e:self.send("S"))
+        self.root.bind("<KeyPress-Left>", lambda e:self.send("L"))
+        self.root.bind("<KeyRelease-Left>", lambda e:self.send("S"))
+        self.root.bind("<KeyPress-Right>", lambda e:self.send("R"))
+        self.root.bind("<KeyRelease-Right>", lambda e:self.send("S"))
+
+        self.root.bind("1", lambda e:self.toggle_front())
+        self.root.bind("2", lambda e:self.toggle_back())
+        self.root.bind("3", lambda e:self.toggle_park())
+        self.root.bind("4", lambda e:self.toggle_horn())
+
+root = ctk.CTk()
+app = JarvisController(root)
+root.mainloop()
+
       </code></pre>
       <p>Handwritten circuit diagram: <a href="images/car_circuit.png">View</a></p>
     </div>
