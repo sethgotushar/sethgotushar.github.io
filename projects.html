@@ -854,6 +854,408 @@ void brakeOff() {
     </div>
       <p>arduino-uno circuit diagram: <a href="car_circuit_2.jpg">View</a></p>
     </div>
+        <h3>Robot Controller</h3>
+      <pre><code class="python">
+        import serial
+import serial.tools.list_ports
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+# ----------------------------
+# Config and command mapping
+# ----------------------------
+CMD = {
+    # Movement
+    'forward': 'F', 'back': 'B', 'left': 'L', 'right': 'R', 'stop': 'S',
+    # Features
+    'front_light_on': 'W', 'front_light_off': 'w',
+    'back_light_on': 'U', 'back_light_off': 'u',
+    'horn_on': 'V', 'horn_off': 'v',
+    'emergency_on': 'X', 'emergency_off': 'x',
+    # Head & hand
+    'head_up': 'HU', 'head_down': 'HD',
+    'hand_up': 'HRU', 'hand_down': 'HRD'
+}
+
+BAUD = 9600
+LINE_ENDING = '\n'
+SEND_LINE_ENDING = False
+
+ser = None  # global serial handle
+
+# ----------------------------
+# GUI setup
+# ----------------------------
+root = tk.Tk()
+root.title("Jarvis Robot Controller")
+root.configure(bg="#1e1e2f")
+
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("TButton", font=("Arial", 12), padding=6)
+style.configure("Toggle.TButton", font=("Arial", 11, "bold"))
+
+status_var = tk.StringVar(value="Disconnected")
+com_var = tk.StringVar()
+
+# Top bar
+top = ttk.Frame(root)
+top.pack(pady=8)
+tk.Label(root, text="TUSHAR SETH", font=("Arial", 20, "bold"),
+         fg="white", bg="#1e1e2f").pack(pady=4)
+ttk.Label(top, textvariable=status_var, foreground="lime").pack(side="left", padx=6)
+
+# COM port controls
+def refresh_ports():
+    ports = [p.device for p in serial.tools.list_ports.comports()]
+    com_menu['values'] = ports
+    if ports:
+        com_var.set(ports[-1])
+    else:
+        com_var.set('')
+
+ttk.Button(top, text="Refresh", command=refresh_ports).pack(side="left", padx=6)
+com_menu = ttk.Combobox(top, textvariable=com_var, width=12, state="readonly")
+com_menu.pack(side="left", padx=6)
+connect_btn = ttk.Button(top, text="Connect")
+disconnect_btn = ttk.Button(top, text="Disconnect", state='disabled')
+connect_btn.pack(side="left", padx=6)
+disconnect_btn.pack(side="left", padx=6)
+
+# Main control frame (movement left, head/hand right)
+main_frame = tk.Frame(root, bg="#1e1e2f")
+main_frame.pack(pady=10)
+
+# Movement pad (shifted slightly left)
+pad = ttk.LabelFrame(main_frame, text="Movement", padding=10)
+pad.grid(row=0, column=0, padx=(20, 40))
+
+def bind_motion(btn, direction):
+    btn.bind('<ButtonPress>', lambda e: send(CMD[direction]))
+    btn.bind('<ButtonRelease>', lambda e: send(CMD['stop']))
+
+btn_up = ttk.Button(pad, text="↑", width=5)
+btn_up.grid(row=0, column=1, padx=6, pady=6)
+bind_motion(btn_up, 'forward')
+
+btn_left = ttk.Button(pad, text="←", width=5)
+btn_left.grid(row=1, column=0, padx=6, pady=6)
+bind_motion(btn_left, 'left')
+
+btn_right = ttk.Button(pad, text="→", width=5)
+btn_right.grid(row=1, column=2, padx=6, pady=6)
+bind_motion(btn_right, 'right')
+
+btn_down = ttk.Button(pad, text="↓", width=5)
+btn_down.grid(row=2, column=1, padx=6, pady=6)
+bind_motion(btn_down, 'back')
+
+# Head & Hand controls (to the right of movement)
+head_hand_frame = ttk.LabelFrame(main_frame, text="Head & Hand Control", padding=10)
+head_hand_frame.grid(row=0, column=1, padx=(40, 20))
+
+ttk.Button(head_hand_frame, text="Head Up",
+           command=lambda: send(CMD['head_up'])).grid(row=0, column=0, padx=6, pady=6)
+ttk.Button(head_hand_frame, text="Head Down",
+           command=lambda: send(CMD['head_down'])).grid(row=1, column=0, padx=6, pady=6)
+ttk.Button(head_hand_frame, text="Hand Up",
+           command=lambda: send(CMD['hand_up'])).grid(row=0, column=1, padx=6, pady=6)
+ttk.Button(head_hand_frame, text="Hand Down",
+           command=lambda: send(CMD['hand_down'])).grid(row=1, column=1, padx=6, pady=6)
+
+# Feature toggles
+toggles = ttk.LabelFrame(root, text="Robot Features", padding=10)
+toggles.pack(pady=10)
+
+toggle_states = {'front_light': False, 'back_light': False, 'horn': False, 'emergency': False}
+
+def toggle(feature, on_cmd, off_cmd, btn):
+    toggle_states[feature] = not toggle_states[feature]
+    if toggle_states[feature]:
+        send(CMD[on_cmd])
+        btn.config(text=f"{feature.replace('_',' ').title()} ON", style="Toggle.TButton")
+    else:
+        send(CMD[off_cmd])
+        btn.config(text=f"{feature.replace('_',' ').title()} OFF", style="TButton")
+
+btn_front = ttk.Button(toggles, text="Front Light OFF")
+btn_front.config(command=lambda: toggle('front_light', 'front_light_on', 'front_light_off', btn_front))
+btn_front.grid(row=0, column=0, padx=6, pady=6)
+
+btn_back = ttk.Button(toggles, text="Back Light OFF")
+btn_back.config(command=lambda: toggle('back_light', 'back_light_on', 'back_light_off', btn_back))
+btn_back.grid(row=0, column=1, padx=6, pady=6)
+
+btn_horn = ttk.Button(toggles, text="Horn OFF")
+btn_horn.config(command=lambda: toggle('horn', 'horn_on', 'horn_off', btn_horn))
+btn_horn.grid(row=0, column=2, padx=6, pady=6)
+
+btn_emergency = ttk.Button(toggles, text="Emergency OFF")
+btn_emergency.config(command=lambda: toggle('emergency', 'emergency_on', 'emergency_off', btn_emergency))
+btn_emergency.grid(row=0, column=3, padx=6, pady=6)
+
+# Speed slider
+speed_frame = ttk.LabelFrame(root, text="Speed", padding=10)
+speed_frame.pack(pady=10)
+ttk.Label(speed_frame, text="Speed Level").grid(row=0, column=0)
+speed = ttk.Scale(speed_frame, from_=0, to=9, orient="horizontal",
+                  command=lambda val: send_speed(val), length=220)
+speed.grid(row=0, column=1, padx=6)
+
+# ----------------------------
+# Keyboard bindings
+# ----------------------------
+def bind_keys():
+    def on_key_press(e):
+        if e.keysym == 'Up': send(CMD['forward'])
+        elif e.keysym == 'Down': send(CMD['back'])
+        elif e.keysym == 'Left': send(CMD['left'])
+        elif e.keysym == 'Right': send(CMD['right'])
+        elif e.keysym == 'q': send(CMD['head_up'])
+        elif e.keysym == 'a': send(CMD['head_down'])
+        elif e.keysym == 'w': send(CMD['hand_up'])
+        elif e.keysym == 's': send(CMD['hand_down'])
+
+    def on_key_release(e):
+        if e.keysym in ['Up', 'Down', 'Left', 'Right', 'q', 'a', 'w', 's']:
+            send(CMD['stop'])
+
+    root.bind('<KeyPress>', on_key_press)
+    root.bind('<KeyRelease>', on_key_release)
+    root.focus_set()
+
+# ----------------------------
+# Serial helpers
+# ----------------------------
+def send(char):
+    global ser
+    if not ser or not ser.is_open:
+        status_var.set("Not connected")
+        return
+    try:
+        data = char + (LINE_ENDING if SEND_LINE_ENDING else '')
+        ser.write(data.encode('utf-8'))
+        status_var.set(f"Sent: {char}")
+    except Exception as e:
+        status_var.set(f"Error: {e}")
+
+def send_speed(val):
+    try:
+        send(str(int(float(val))))
+    except Exception:
+        status_var.set("Speed error")
+
+def check_serial():
+    global ser
+    if ser and ser.is_open:
+        try:
+            line = ser.readline().decode('utf-8', errors='ignore').strip()
+            if line:
+                status_var.set(f"Arduino: {line}")
+        except Exception:
+            pass
+    root.after(100, check_serial)
+
+def connect():
+    global ser
+    com = com_var.get().strip()
+    if not com:
+        messagebox.showerror("Serial", "Select a COM port.")
+        return
+    try:
+        ser = serial.Serial(com, BAUD, timeout=0.1)
+        status_var.set(f"Connected: {com}")
+        connect_btn.config(state='disabled')
+        disconnect_btn.config(state='normal')
+        root.after(100, check_serial)
+    except Exception as e:
+        messagebox.showerror("Serial", f"Failed to connect: {e}")
+        status_var.set("Connection failed")
+
+def disconnect():
+    global ser
+    try:
+        if ser and ser.is_open:
+            ser.close()
+    except Exception as e:
+        status_var.set(f"Disconnect error: {e}")
+    status_var.set("Disconnected")
+    connect_btn.config(state='normal')
+    disconnect_btn.config(state='disabled')
+
+# Wire buttons to functions
+connect_btn.config(command=connect)
+disconnect_btn.config(command=disconnect)
+
+# Clean shutdown
+def on_close():
+    disconnect()
+    root.destroy()
+
+root.protocol("WM_DELETE_WINDOW", on_close)
+
+# ----------------------------
+# Launch
+# ----------------------------
+bind_keys()
+refresh_ports()
+root.mainloop()
+
+      </code></pre>
+       <h3>Arduino code</h3>
+      <code><pre>
+        #define in1 3
+#define in2 5
+#define in3 6
+#define in4 11
+
+#define LEDF 9
+#define LEDB 8
+#define HORN 7
+#define LEDP 4
+
+#define HEAD_IN1 2
+#define HEAD_IN2 10
+#define HAND_IN1 12
+#define HAND_IN2 A0
+
+int Speed = 204;
+int Speedsec;
+int Turnradius = 0;
+int brakeTime = 45;
+int brkonoff = 1;
+
+char buttonState = 0;
+char lastButtonState = 0;
+
+void setup() {
+  pinMode(in1, OUTPUT); pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT); pinMode(in4, OUTPUT);
+  pinMode(LEDF, OUTPUT); pinMode(LEDB, OUTPUT);
+  pinMode(HORN, OUTPUT); pinMode(LEDP, OUTPUT);
+  pinMode(HEAD_IN1, OUTPUT); pinMode(HEAD_IN2, OUTPUT);
+  pinMode(HAND_IN1, OUTPUT); pinMode(HAND_IN2, OUTPUT);
+
+  Stop(); headStop(); handStop();
+  Serial.begin(9600);
+  Serial.setTimeout(50);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String cmd = Serial.readString();
+    cmd.trim();
+    Stop(); headStop(); handStop();
+
+    if (cmd == "F") forward();
+    else if (cmd == "B") back();
+    else if (cmd == "L") left();
+    else if (cmd == "R") right();
+    else if (cmd == "G") forwardleft();
+    else if (cmd == "I") forwardright();
+    else if (cmd == "H") backleft();
+    else if (cmd == "J") backright();
+    else if (cmd == "S") Stop();
+
+    else if (cmd == "W") frontledon();
+    else if (cmd == "w") frontledoff();
+    else if (cmd == "U") backledon();
+    else if (cmd == "u") backledoff();
+    else if (cmd == "V") hornon();
+    else if (cmd == "v") hornoff();
+    else if (cmd == "X") parkledon();
+    else if (cmd == "x") parkledoff();
+
+    else if (cmd == "0") Speed = 100;
+    else if (cmd == "1") Speed = 140;
+    else if (cmd == "2") Speed = 153;
+    else if (cmd == "3") Speed = 165;
+    else if (cmd == "4") Speed = 178;
+    else if (cmd == "5") Speed = 191;
+    else if (cmd == "6") Speed = 204;
+    else if (cmd == "7") Speed = 216;
+    else if (cmd == "8") Speed = 229;
+    else if (cmd == "9") Speed = 242;
+    else if (cmd == "q") Speed = 255;
+
+    else if (cmd == "HU") headUp();
+    else if (cmd == "HD") headDown();
+    else if (cmd == "HRU") handUp();
+    else if (cmd == "HRD") handDown();
+
+    Speedsec = Turnradius;
+    if (brkonoff == 1 && cmd.length() > 0) {
+      buttonState = cmd.charAt(0);
+      brakeOn();
+    } else {
+      brakeOff();
+    }
+    lastButtonState = buttonState;
+  }
+}
+
+// Movement
+void forward() { analogWrite(in1, Speed); analogWrite(in3, Speed); }
+void back()    { analogWrite(in2, Speed); analogWrite(in4, Speed); }
+void left()    { analogWrite(in3, Speed); analogWrite(in2, Speed); }
+void right()   { analogWrite(in4, Speed); analogWrite(in1, Speed); }
+void forwardleft() { analogWrite(in1, Speedsec); analogWrite(in3, Speed); }
+void forwardright(){ analogWrite(in1, Speed); analogWrite(in3, Speedsec); }
+void backright()   { analogWrite(in2, Speed); analogWrite(in4, Speedsec); }
+void backleft()    { analogWrite(in2, Speedsec); analogWrite(in4, Speed); }
+void Stop() {
+  analogWrite(in1, 0); analogWrite(in2, 0);
+  analogWrite(in3, 0); analogWrite(in4, 0);
+}
+
+// Lights & Horn
+void frontledon()  { digitalWrite(LEDF, HIGH); }
+void frontledoff() { digitalWrite(LEDF, LOW); }
+void backledon()   { digitalWrite(LEDB, HIGH); }
+void backledoff()  { digitalWrite(LEDB, LOW); }
+void hornon()      { digitalWrite(HORN, HIGH); }
+void hornoff()     { digitalWrite(HORN, LOW); }
+void parkledon()   { digitalWrite(LEDP, HIGH); }
+void parkledoff()  { digitalWrite(LEDP, LOW); }
+
+// Braking
+void brakeOn() {
+  if (buttonState != lastButtonState && buttonState == 'S') {
+    digitalWrite(in1, HIGH); digitalWrite(in2, HIGH);
+    digitalWrite(in3, HIGH); digitalWrite(in4, HIGH);
+    delay(brakeTime);
+    Stop();
+  }
+}
+void brakeOff() {}
+
+// Head motor
+void headUp() {
+  digitalWrite(HEAD_IN1, HIGH); digitalWrite(HEAD_IN2, LOW);
+  delay(200); headStop();
+}
+void headDown() {
+  digitalWrite(HEAD_IN1, LOW); digitalWrite(HEAD_IN2, HIGH);
+  delay(200); headStop();
+}
+void headStop() {
+  digitalWrite(HEAD_IN1, LOW); digitalWrite(HEAD_IN2, LOW);
+}
+
+// Hand motor
+void handUp() {
+  digitalWrite(HAND_IN1, HIGH); digitalWrite(HAND_IN2, LOW);
+  delay(200); handStop();
+}
+void handDown() {
+  digitalWrite(HAND_IN1, LOW); digitalWrite(HAND_IN2, HIGH);
+  delay(200); handStop();
+}
+void handStop() {
+  digitalWrite(HAND_IN1, LOW); digitalWrite(HAND_IN2, LOW);
+}
+
+      </pre></code>
   
 
   <footer>
